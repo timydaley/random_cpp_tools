@@ -1,5 +1,5 @@
-#    Copyright (C) 2011 University of Southern California and
-#                       Andrew D. Smith and Timothy Daley
+#    Copyright (C) 2011-2104 University of Southern California and
+#                            Andrew D. Smith and Timothy Daley
 #
 #    Authors: Timothy Daley and Andrew D. Smith
 #
@@ -17,38 +17,55 @@
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 
+
+ifndef ROOT
+ROOT = $(shell pwd)
+endif
+
 ifndef SMITHLAB_CPP
-$(error Must define SMITHLAB_CPP variable)
+SMITHLAB_CPP=$(ROOT)/smithlab_cpp/
 endif
 
 
+ifndef SAMTOOLS_DIR
+SAMTOOLS_DIR=$(ROOT)/samtools/
+endif
+
 SOURCES = $(wildcard *.cpp)
 OBJECTS = $(patsubst %.cpp,%.o,$(SOURCES))
-PROGS =  approx_sample_reads_noreplace sample_fastq true_saturation
-INCLUDEDIRS = $(SMITHLAB_CPP)
+PROGS = approx_sample_reads_noreplace sample_fastq true_saturation
+ifdef SAMTOOLS_DIR
+PROGS += bam2mr
+endif
+INCLUDEDIRS = $(SMITHLAB_CPP) $(SAMTOOLS_DIR)
 INCLUDEARGS = $(addprefix -I,$(INCLUDEDIRS))
 
 LIBS += -lgsl -lgslcblas -lz
 
-CXX = g++
+CXX = g++ 
 CXXFLAGS = -Wall -fPIC -fmessage-length=50
+
+# Flags for Mavericks
+ifeq "$(shell uname)" "Darwin"
+CXXFLAGS += -arch x86_64
+ifeq "$(shell if [ `sysctl -n kern.osrelease | cut -d . -f 1` -ge 13 ];\
+              then echo 'true'; fi)" "true"
+CXXFLAGS += -stdlib=libstdc++
+endif
+endif
+
+
 OPTFLAGS = -O2
-DEBUGFLAGS = -g -lefence -lpthread -L/home/cmb-01/as/andrewds/lib/
+DEBUGFLAGS = -g -lefence -lpthread -L/usr/local/lib/
 
 ifdef DEBUG
 CXXFLAGS += $(DEBUGFLAGS)
 endif
 
-ifdef BAMTOOLS_ROOT
-INCLUDEDIRS += $(BAMTOOLS_ROOT)/include
-LIBS += -L$(BAMTOOLS_ROOT)/lib -lz -lbamtools
-CXXFLAGS += -DHAVE_BAMTOOLS
-endif
-
-ifdef SAMTOOLS_DIR
 INCLUDEDIRS += $(SAMTOOLS_DIR)
 CXXFLAGS += -DHAVE_SAMTOOLS
-endif
+
+
 
 ifdef OPT
 CXXFLAGS += $(OPTFLAGS)
@@ -56,14 +73,14 @@ endif
 
 all: $(PROGS)
 
-$(PROGS): $(addprefix $(SMITHLAB_CPP)/, GenomicRegion.o smithlab_os.o \
-	smithlab_utils.o OptionParser.o MappedRead.o RNG.o)
+$(PROGS): $(addprefix $(SMITHLAB_CPP)/, \
+          smithlab_os.o smithlab_utils.o GenomicRegion.o OptionParser.o RNG.o MappedRead.o)
 
 #ifdef SAMTOOLS_DIR
-#$(PROGS): $(addprefix $(SMITHLAB_CPP)/, SAM.o) \
+#bam2mr preseq: $(addprefix $(SMITHLAB_CPP)/, SAM.o) \
         $(addprefix $(SAMTOOLS_DIR)/, sam.o bam.o bam_import.o bam_pileup.o \
         faidx.o bam_aux.o kstring.o knetfile.o sam_header.o razf.o bgzf.o)
-endif
+#endif
 
 %.o: %.cpp %.hpp
 	$(CXX) $(CXXFLAGS) -c -o $@ $< $(INCLUDEARGS)
@@ -72,8 +89,8 @@ endif
 	$(CXX) $(CXXFLAGS) -o $@ $^ $(INCLUDEARGS) $(LIBS)
 
 install: $(PROGS)
-	@mkdir -p $(RSEG_ROOT)/bin
-	@install -m 755 $(PROGS) $(RSEG_ROOT)/bin
+	@mkdir -p $(ROOT)/bin
+	@install -m 755 $(PROGS) $(ROOT)/bin
 
 clean:
 	@-rm -f $(PROGS) *.o *~
