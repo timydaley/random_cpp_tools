@@ -33,7 +33,7 @@ endif
 
 SOURCES = $(wildcard *.cpp)
 OBJECTS = $(patsubst %.cpp,%.o,$(SOURCES))
-PROGS = approx_sample_reads_noreplace sample_fastq true_saturation
+PROGS = approx_sample_reads_noreplace sample_fastq sample_vals
 ifdef SAMTOOLS_DIR
 PROGS += bam2mr
 endif
